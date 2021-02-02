@@ -9,7 +9,6 @@ import com.cooperativa.model.Pauta;
 import com.cooperativa.model.Votacao;
 import com.cooperativa.model.Voto;
 import com.cooperativa.repositories.PautaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,14 +17,11 @@ import reactor.core.scheduler.Schedulers;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Date;
 
 @Service
 public class PautaService extends GenericServiceImpl<Pauta, String, PautaRepository> {
 
-    @Autowired
-    private AssociadoService associadoService;
     private WebClient webClientCPF;
 
     @PostConstruct
@@ -46,12 +42,26 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
                 .flatMap(this::salvarVotoEAtualizarPauta);
     }
 
+    public Mono<Pauta> abrirVotacao(SessaoDTO sessaoDTO)  throws ApplicationException {
+      validarSessaoDTO(sessaoDTO);
+      return procurarPorId(sessaoDTO.getCodigoPauta())
+        .switchIfEmpty(Mono.error(new ApplicationException("Pauta não encontrada")))
+        .map(p -> {
+          sessaoDTO.setPauta(p);
+          return sessaoDTO;
+        })
+        .flatMap(this::validarPauta)
+        .flatMap(this::aplicarTimeout);
+    }
+
     private Mono<Voto> salvarVotoEAtualizarPauta(VotoDTO votoDTO) {
         Pauta pauta = votoDTO.getPauta();
-        Votacao votacao = pauta.buscarVotacaoAberta();
+        Votacao votacao = pauta.getVotacao();
 
         Voto voto = new Voto();
-        voto.setAssociado(votoDTO.getAssociado());
+        Associado associado = new Associado();
+        associado.setCpf(votoDTO.getCpf());
+        voto.setAssociado(associado);
         voto.setOpcao(votoDTO.getOpcao());
 
         votacao.getVotoList().add(voto);
@@ -61,23 +71,13 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
     }
 
     private Mono<VotoDTO> validarAssociadoParaVoto(VotoDTO votoDTO) {
-        try {
-            return associadoService.procurarPorId(votoDTO.getCpf())
-                    .switchIfEmpty(Mono.error(new ApplicationException("Associado não encontrado")))
-                    .map(a -> {
-                        votoDTO.setAssociado(a);
-                        return votoDTO;
-                    })
-                    .flatMap(this::verificarVotoExistente)
-                    .flatMap(this::verificarAssociadoHabilitado);
-        } catch (ApplicationException e) {
-            return Mono.error(e);
-        }
+        return verificarVotoExistente(votoDTO)
+                   .flatMap(this::verificarAssociadoHabilitado);
     }
 
     private Mono<VotoDTO> verificarAssociadoHabilitado(VotoDTO votoDTO) {
         WebClient.RequestHeadersUriSpec<?> getMethod = webClientCPF.get();
-        WebClient.ResponseSpec responseUri = getMethod.uri("/users/" + votoDTO.getAssociado().getCpf()).retrieve();
+        WebClient.ResponseSpec responseUri = getMethod.uri("/users/" + votoDTO.getCpf()).retrieve();
         return responseUri
                 .onStatus(HttpStatus::isError, response -> response.bodyToMono(String.class)
                         .flatMap(error -> Mono.error(new ApplicationException("CPF Inválido"))))
@@ -93,11 +93,11 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
     }
 
     private Mono<VotoDTO> verificarVotoExistente(VotoDTO votoDTO) {
-        Associado associado = votoDTO.getAssociado();
-        Votacao votacao = votoDTO.getPauta().buscarVotacaoAberta();
+        String cpfAssociado = votoDTO.getCpf();
+        Votacao votacao = votoDTO.getPauta().getVotacao();
 
         boolean possuiVoto = votacao.getVotoList().stream().anyMatch(
-                e -> e.getAssociado().getCpf().equals(associado.getCpf()));
+                e -> e.getAssociado().getCpf().equals(cpfAssociado));
 
         if (possuiVoto) {
             return Mono.error(new ApplicationException("Associado já registrou voto para a pauta"));
@@ -106,8 +106,9 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
     }
 
     private Mono<VotoDTO> validarPautaParaVoto(VotoDTO votoDTO) {
-        if(!votoDTO.getPauta().temVotacaoEmAndamento()) {
-            return Mono.error(new ApplicationException("Pauta não possui votação em andamento"));
+        Votacao votacao = votoDTO.getPauta().getVotacao();
+        if (votacao != null && votacao.isFinalizada()) {
+          return Mono.error(new ApplicationException("Pauta não possui votação em andamento"));
         }
         return Mono.just(votoDTO);
     }
@@ -117,29 +118,17 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
             throw new ApplicationException("Objeto para registro do voto não instanciado");
         }
         if (votoDTO.getCodigoPauta() == null) {
-            throw new ApplicationException("Informações da pauta não informadas");
+            throw new ApplicationException("Código da pauta não informado");
         }
         if (votoDTO.getCpf() == null) {
-            throw new ApplicationException("Informações do associado não informadas");
+            throw new ApplicationException("CPF do associado não informado");
         }
         if (votoDTO.getOpcao() == null) {
             throw new ApplicationException("Resposta do voto não informada");
         }
     }
 
-    public Mono<Votacao> abrirVotacao(SessaoDTO sessaoDTO)  throws ApplicationException {
-        validarSessaoDTO(sessaoDTO);
-        Mono<Pauta> pautaComVotacaoAberta = procurarPorId(sessaoDTO.getCodigoPauta())
-                .switchIfEmpty(Mono.error(new ApplicationException("Pauta não encontrada")))
-                .map(p -> {
-                    sessaoDTO.setPauta(p);
-                    return sessaoDTO;
-                })
-                .flatMap(this::validarPauta);
-        return pautaComVotacaoAberta.flatMap(this::aplicarTimeout);
-    }
-
-    public Mono<Pauta> atualizarPauta(Pauta pauta) {
+    private Mono<Pauta> atualizarPauta(Pauta pauta) {
         try {
             return atualizar(pauta);
         } catch (ApplicationException e) {
@@ -147,27 +136,27 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
         }
     }
 
-    private Mono<Votacao> aplicarTimeout(Pauta pauta) {
-        Votacao votacao = pauta.buscarVotacaoAberta();
-        Duration duration = Duration.ofMinutes(votacao.getTimeout());
+    private Mono<Pauta> aplicarTimeout(Pauta pauta) {
+        Votacao votacao = pauta.getVotacao();
+        Duration duration = Duration.ofMinutes(votacao.getDuracaoMinutos());
         Mono<Votacao> votacaoMono = Mono.just(votacao);
         votacaoMono.subscribeOn(Schedulers.parallel())
                 .delayElement(duration)
                 .map(v -> pauta)
                 .flatMap(this::encerrarVotacao)
                 .subscribe();
-        return votacaoMono;
+        return Mono.just(pauta);
     }
 
     private Mono<Votacao> encerrarVotacao(Pauta pauta) {
         return getRepository().findById(pauta.getCodigo())
                 .map(p -> {
-                    Votacao votacao = p.buscarVotacaoAberta();
+                    Votacao votacao = p.getVotacao();
                     votacao.setFinalizada(true);
                     return p;
                 })
                 .flatMap(getRepository()::save)
-                .map(Pauta::buscarUltimaVotacao)
+                .map(Pauta::getVotacao)
                 .flatMap(Mono::just);
     }
 
@@ -178,13 +167,13 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
         Pauta p = sessaoDTO.getPauta();
         Votacao votacao = new Votacao();
         votacao.setDataInicio(new Date());
-        Long duracao = sessaoDTO.getDuracao() != null ? sessaoDTO.getDuracao() : 1;
-        votacao.setTimeout(duracao);
-        p.getVotacaoList().add(votacao);
+        Long duracao = sessaoDTO.getDuracaoMinutos() != null ? sessaoDTO.getDuracaoMinutos() : 1;
+        votacao.setDuracaoMinutos(duracao);
+        p.setVotacao(votacao);
         return Mono.just(p).flatMap(this::atualizarPauta);
     }
 
-    public void validarSessaoDTO(SessaoDTO sessaoDTO) throws ApplicationException {
+    private void validarSessaoDTO(SessaoDTO sessaoDTO) throws ApplicationException {
         if (sessaoDTO == null || sessaoDTO.getCodigoPauta() == null) {
             throw new ApplicationException("Informações da pauta não informadas");
         }
@@ -198,7 +187,6 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
         if (entity.getId() == null) {
             throw new ApplicationException("Código da Pauta não informado");
         }
-        entity.setVotacaoList(new ArrayList<>());
     }
 
     @Override

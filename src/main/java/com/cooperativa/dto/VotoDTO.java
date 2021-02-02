@@ -9,7 +9,6 @@ public class VotoDTO {
     private String codigoPauta;
     private String opcao;
 
-    private Associado associado;
     private Pauta pauta;
 
     public String getCpf() {
@@ -34,14 +33,6 @@ public class VotoDTO {
 
     public void setOpcao(String opcao) {
         this.opcao = opcao;
-    }
-
-    public Associado getAssociado() {
-        return associado;
-    }
-
-    public void setAssociado(Associado associado) {
-        this.associado = associado;
     }
 
     public Pauta getPauta() {

@@ -15,7 +15,7 @@ public class Votacao extends AbstractEntity<ObjectId> implements Comparable<Vota
     @Id
     private ObjectId id;
     private Date dataInicio;
-    private Long timeout;
+    private Long duracaoMinutos;
 
     public Votacao() {
         votoList = new ArrayList<>();
@@ -49,12 +49,12 @@ public class Votacao extends AbstractEntity<ObjectId> implements Comparable<Vota
         this.votoList = votoList;
     }
 
-    public Long getTimeout() {
-        return timeout;
+    public Long getDuracaoMinutos() {
+      return duracaoMinutos;
     }
 
-    public void setTimeout(Long timeout) {
-        this.timeout = timeout;
+    public void setDuracaoMinutos(Long duracaoMinutos) {
+      this.duracaoMinutos = duracaoMinutos;
     }
 
     @Override

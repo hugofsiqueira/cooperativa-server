@@ -27,7 +27,7 @@ public class PautaController {
     }
 
     @PostMapping(value = "/v1/abrir-votacao")
-    public Mono<Votacao> abrirVotacao(@RequestBody SessaoDTO sessaoDTO) throws ApplicationException {
+    public Mono<Pauta> abrirVotacao(@RequestBody SessaoDTO sessaoDTO) throws ApplicationException {
         return pautaService.abrirVotacao(sessaoDTO);
     }
 

@@ -5,7 +5,7 @@ import com.cooperativa.model.Pauta;
 public class SessaoDTO {
 
     private String codigoPauta;
-    private Long duracao;
+    private Long duracaoMinutos;
     private Pauta pauta;
 
     public String getCodigoPauta() {
@@ -16,15 +16,15 @@ public class SessaoDTO {
         this.codigoPauta = codigoPauta;
     }
 
-    public Long getDuracao() {
-        return duracao;
+    public Long getDuracaoMinutos() {
+      return duracaoMinutos;
     }
 
-    public void setDuracao(Long duracao) {
-        this.duracao = duracao;
+    public void setDuracaoMinutos(Long duracaoMinutos) {
+      this.duracaoMinutos = duracaoMinutos;
     }
 
-    public Pauta getPauta() {
+  public Pauta getPauta() {
         return pauta;
     }
 
