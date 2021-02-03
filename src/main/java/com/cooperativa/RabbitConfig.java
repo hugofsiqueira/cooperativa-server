@@ -28,7 +28,7 @@ public class RabbitConfig {
     throws Exception {
     CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
     connectionFactory.getRabbitConnectionFactory()
-      .setUri("amqps://jjtsvxjf:3eFbjnyFElPPL9Pgv3HW21jU6BdszZYC@jackal.rmq.cloudamqp.com/jjtsvxjf");
+      .setUri("amqps://fqybnvgw:vRL8SVNo59D4QY3AWaFO8lYt2puW9jyW@jackal.rmq.cloudamqp.com/fqybnvgw");
     return connectionFactory;
   }
 
