@@ -8,10 +8,8 @@ import com.cooperativa.model.Votacao;
 import com.cooperativa.model.Voto;
 import com.cooperativa.services.PautaService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -20,6 +18,11 @@ public class PautaController {
 
     @Autowired
     private PautaService pautaService;
+
+    @GetMapping(value = "/v1/listar")
+    public Flux<Pauta> listar() {
+      return pautaService.listar();
+    }
 
     @PostMapping(value = "/v1/inserir")
     public Mono<Pauta> inserir(@RequestBody Pauta pauta) {

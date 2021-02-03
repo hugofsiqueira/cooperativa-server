@@ -3,7 +3,9 @@ package com.cooperativa.services;
 import com.cooperativa.exceptions.ApplicationException;
 import com.cooperativa.model.AbstractEntity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.Serializable;
@@ -25,6 +27,11 @@ public abstract class GenericServiceImpl<E extends AbstractEntity, K extends Ser
     }
 
     public abstract void validarId(K id) throws ApplicationException;
+
+    @Override
+    public Flux<E> listar() {
+      return repository.findAll(Sort.by(Sort.Direction.DESC, "dataCriacao"));
+    }
 
     @Override
     public Mono<E> procurarPorId(K id) throws ApplicationException{

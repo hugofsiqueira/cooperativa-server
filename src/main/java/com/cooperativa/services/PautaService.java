@@ -4,10 +4,7 @@ import com.cooperativa.dto.SessaoDTO;
 import com.cooperativa.dto.StatusCPFDTO;
 import com.cooperativa.dto.VotoDTO;
 import com.cooperativa.exceptions.ApplicationException;
-import com.cooperativa.model.Associado;
-import com.cooperativa.model.Pauta;
-import com.cooperativa.model.Votacao;
-import com.cooperativa.model.Voto;
+import com.cooperativa.model.*;
 import com.cooperativa.repositories.PautaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -121,14 +118,18 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
         if (votoDTO == null) {
             throw new ApplicationException("Objeto para registro do voto não instanciado");
         }
-        if (votoDTO.getCodigoPauta() == null) {
+        if (votoDTO.getCodigoPauta() == null || votoDTO.getCodigoPauta().trim().isEmpty()) {
             throw new ApplicationException("Código da pauta não informado");
         }
-        if (votoDTO.getCpf() == null) {
+        if (votoDTO.getCpf() == null || votoDTO.getCpf().trim().isEmpty()) {
             throw new ApplicationException("CPF do associado não informado");
         }
-        if (votoDTO.getOpcao() == null) {
+        if (votoDTO.getOpcao() == null || votoDTO.getOpcao().trim().isEmpty()) {
             throw new ApplicationException("Resposta do voto não informada");
+        }
+        if (!votoDTO.getOpcao().equals(OpcaoVoto.SIM.getLabel()) &&
+          !votoDTO.getOpcao().equals(OpcaoVoto.NAO.getLabel())) {
+          throw new ApplicationException("Resposta do voto deve ser Sim ou Não");
         }
     }
 
@@ -203,6 +204,7 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
         if (entity.getId() == null) {
             throw new ApplicationException("Código da Pauta não informado");
         }
+        entity.setDataCriacao(new Date());
     }
 
     @Override
