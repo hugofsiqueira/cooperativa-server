@@ -30,6 +30,10 @@ public class Pauta extends AbstractEntity<String>{
       return votacao != null && !votacao.isFinalizada();
     }
 
+    public boolean temVotacaoFinalizada() {
+      return votacao != null && votacao.isFinalizada();
+    }
+
     @Override
     public String getId() {
         return codigo;

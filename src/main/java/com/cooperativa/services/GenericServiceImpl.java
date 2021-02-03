@@ -15,7 +15,7 @@ public abstract class GenericServiceImpl<E extends AbstractEntity, K extends Ser
     private R repository;
 
     @Override
-    public Mono<E> inserir(E entity) throws ApplicationException {
+    public Mono<E> inserir(E entity) throws ApplicationException{
         validarEntidadeInserir(entity);
         Mono<E> busca = procurarPorId((K) entity.getId());
         return busca.defaultIfEmpty(entity)
@@ -24,14 +24,10 @@ public abstract class GenericServiceImpl<E extends AbstractEntity, K extends Ser
                 .flatMap(repository::save);
     }
 
-    private void validarId(K id) throws ApplicationException {
-        if (id == null) {
-            throw new ApplicationException("Id deve ser informado para a busca");
-        }
-    }
+    public abstract void validarId(K id) throws ApplicationException;
 
     @Override
-    public Mono<E> procurarPorId(K id) throws ApplicationException {
+    public Mono<E> procurarPorId(K id) throws ApplicationException{
         validarId(id);
         return repository.findById(id);
     }

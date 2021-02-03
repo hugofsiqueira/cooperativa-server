@@ -9,6 +9,7 @@ import com.cooperativa.model.Pauta;
 import com.cooperativa.model.Votacao;
 import com.cooperativa.model.Voto;
 import com.cooperativa.repositories.PautaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -23,6 +24,9 @@ import java.util.Date;
 public class PautaService extends GenericServiceImpl<Pauta, String, PautaRepository> {
 
     private WebClient webClientCPF;
+
+    @Autowired
+    private ResultadoPautaSender resultadoPautaSender;
 
     @PostConstruct
     public void registrarWebClient() {
@@ -42,7 +46,7 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
                 .flatMap(this::salvarVotoEAtualizarPauta);
     }
 
-    public Mono<Pauta> abrirVotacao(SessaoDTO sessaoDTO)  throws ApplicationException {
+    public Mono<Pauta> abrirVotacao(SessaoDTO sessaoDTO) throws ApplicationException {
       validarSessaoDTO(sessaoDTO);
       return procurarPorId(sessaoDTO.getCodigoPauta())
         .switchIfEmpty(Mono.error(new ApplicationException("Pauta não encontrada")))
@@ -153,30 +157,42 @@ public class PautaService extends GenericServiceImpl<Pauta, String, PautaReposit
                 .map(p -> {
                     Votacao votacao = p.getVotacao();
                     votacao.setFinalizada(true);
+                    votacao.apurarResultado();
                     return p;
                 })
                 .flatMap(getRepository()::save)
+                .flatMap(resultadoPautaSender::enviarResultado)
                 .map(Pauta::getVotacao)
                 .flatMap(Mono::just);
     }
 
     private Mono<Pauta> validarPauta(SessaoDTO sessaoDTO) {
-        if(sessaoDTO.getPauta().temVotacaoEmAndamento()) {
+        Pauta pauta = sessaoDTO.getPauta();
+        if(pauta.temVotacaoEmAndamento()) {
             return Mono.error(new ApplicationException("Pauta com votação em andamento"));
         }
-        Pauta p = sessaoDTO.getPauta();
+        if(pauta.temVotacaoFinalizada()) {
+          return Mono.error(new ApplicationException("Pauta com votação realizada"));
+        }
         Votacao votacao = new Votacao();
         votacao.setDataInicio(new Date());
         Long duracao = sessaoDTO.getDuracaoMinutos() != null ? sessaoDTO.getDuracaoMinutos() : 1;
         votacao.setDuracaoMinutos(duracao);
-        p.setVotacao(votacao);
-        return Mono.just(p).flatMap(this::atualizarPauta);
+        pauta.setVotacao(votacao);
+        return Mono.just(pauta).flatMap(this::atualizarPauta);
     }
 
     private void validarSessaoDTO(SessaoDTO sessaoDTO) throws ApplicationException {
         if (sessaoDTO == null || sessaoDTO.getCodigoPauta() == null) {
             throw new ApplicationException("Informações da pauta não informadas");
         }
+    }
+
+    @Override
+    public void validarId(String id) throws ApplicationException {
+      if (id == null || id.trim().isEmpty()) {
+        throw new ApplicationException("Código da pauta não informado");
+      }
     }
 
     @Override

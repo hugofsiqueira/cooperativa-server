@@ -22,17 +22,29 @@ public class PautaController {
     private PautaService pautaService;
 
     @PostMapping(value = "/v1/inserir")
-    public Mono<Pauta> inserir(@RequestBody Pauta pauta) throws ApplicationException {
+    public Mono<Pauta> inserir(@RequestBody Pauta pauta) {
+      try {
         return pautaService.inserir(pauta);
+      } catch (ApplicationException e) {
+        return Mono.error(e);
+      }
     }
 
     @PostMapping(value = "/v1/abrir-votacao")
-    public Mono<Pauta> abrirVotacao(@RequestBody SessaoDTO sessaoDTO) throws ApplicationException {
+    public Mono<Pauta> abrirVotacao(@RequestBody SessaoDTO sessaoDTO) {
+      try {
         return pautaService.abrirVotacao(sessaoDTO);
+      } catch (ApplicationException e) {
+        return Mono.error(e);
+      }
     }
 
     @PostMapping(value = "/v1/registrar-voto")
-    public Mono<Voto> registrarVoto(@RequestBody VotoDTO votoDTO) throws ApplicationException {
+    public Mono<Voto> registrarVoto(@RequestBody VotoDTO votoDTO) {
+      try {
         return pautaService.registrarVoto(votoDTO);
+      } catch (ApplicationException e) {
+        return Mono.error(e);
+      }
     }
 }

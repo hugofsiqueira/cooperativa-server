@@ -16,6 +16,7 @@ public class Votacao extends AbstractEntity<ObjectId> implements Comparable<Vota
     private ObjectId id;
     private Date dataInicio;
     private Long duracaoMinutos;
+    private Resultado resultado;
 
     public Votacao() {
         votoList = new ArrayList<>();
@@ -24,6 +25,19 @@ public class Votacao extends AbstractEntity<ObjectId> implements Comparable<Vota
     @JsonIgnore
     private List<Voto> votoList;
     private boolean finalizada;
+
+    public void apurarResultado() {
+      if (votoList != null && !votoList.isEmpty()) {
+        Long totalVotos = (long)votoList.size();
+        Long votosSim = votoList.stream().filter(voto -> voto.getOpcao().equals(OpcaoVoto.SIM.getLabel())).count();
+        Long votosNao = totalVotos - votosSim;
+        Resultado resultado = new Resultado();
+        resultado.setTotalSim(votosSim);
+        resultado.setTotalNao(votosNao);
+        resultado.setTotalVotos(totalVotos);
+        setResultado(resultado);
+      }
+    }
 
     public Date getDataInicio() {
         return dataInicio;
@@ -57,7 +71,15 @@ public class Votacao extends AbstractEntity<ObjectId> implements Comparable<Vota
       this.duracaoMinutos = duracaoMinutos;
     }
 
-    @Override
+    public Resultado getResultado() {
+      return resultado;
+    }
+
+    public void setResultado(Resultado resultado) {
+      this.resultado = resultado;
+    }
+
+  @Override
     public ObjectId getId() {
         return id;
     }
